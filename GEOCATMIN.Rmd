@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Cargando Librerarias
+```{r}
+library(tidyverse)
+library(sf)
+library(terra)
+library(openxlsx)
+library(zoo)
+```
+
+```{r}
+directories <- list.dirs("GEOCATMIN/commondata")
+directories <- carpetas[!grepl("shp|raster",carpetas)]
+Hydrogeolic_units_paths <- unlist(
+  lapply(directories, function(x){
+    tmp <- list.files(x,full.names  = TRUE)
+    tmp[endsWith(tmp,".shp")]
+  })
+)
+Hydrogeolic_units <- do.call(bind_rows,
+  lapply(Hydrogeolic_units_paths, st_read)
+)
+
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Kis-a")] <- "Kis-ar"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Js-l")] <- "Js-la"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Jm-p")] <- "Jm-pu"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Qp-b/c-anda")] <- "Q-br2"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "NQ-b-and")] <- "N-br2"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "NP-cbc-gnmg")] <- "Js-la"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Jms-p")] <- "Jms-pu"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Peo-h/t")] <- "Peo-hu/t"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Js-g")] <- "Js-gr"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Q-la")] <- "Qpl-la"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Peo-h/qu")] <- "Peo-hu/qu"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Peo-h/h")] <- "	Peo-hu/h"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "N-and")] <- "Js-la"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Nmp-ch-da")] <- "N-da"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "\tPeo-hu/h")] <- "Peo-hu/h"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Nm-na/da")] <- "N-da"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Nm-ta/da")] <- "N-da"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Qp-b/am-tcri")] <- "Q-br1"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "NQ-b-tb")] <- "Q-br1"
+Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME_2 == "PN-o")] <- "PN-o"
+
+#Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Q-gl")] <- "Qpl-mo":: Glaciar
+# Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "N-dq")] <- :: DIQUE
+#Hydrogeolic_units$NAME[which(Hydrogeolic_units$NAME == "Q-qm-tr")] <- "Js-la" :: Depositos de carbonatos
+
+
+# unique(Hydrogeolic_units$NAME_2)
+# unique(Hydrogeolic_units$NAME_A)
+# unique(Hydrogeolic_units$NAME)
+# 
+# unique(Hydrogeolic_units$Hidro_1)
+# unique(Hydrogeolic_units$Hidro_2)
+# 
+# Hydrogeolic_units %>% filter(grepl("Ks-as", NAME_2))
+```
+
+```{r}
+# Litologia1 <- read.xlsx("GEOCATMIN/resultados.xlsx", sheet = 3) %>%
+#   dplyr::select(Formación.geológica,
+#                 `Conductividad.hidráulica.(m/d)`,
+#                 `Porosidad.(%)`) %>%
+#   mutate(Formación.geológica = na.locf(Formación.geológica))
+# Litologia2 <- read.xlsx("GEOCATMIN/resultados.xlsx", sheet = 4)%>%
+#   dplyr::select(Formación1,
+#                 `Conductividad.hidráulica.(m/d)`,
+#                 `Porosidad.(%)`)%>%
+#   mutate(Formación1 = na.locf(Formación1))
+# 
+# names(Litologia1) <- c("NAME_A","SOL_K", "Porosity")
+# Litologia1 %>% dplyr::select("NAME_A","SOL_K") %>%
+#   separate(SOL_K, sep = "\n", into = paste0("C",c(1:10))) %>%
+#   dplyr::select(where(~ !all(is.na(.)))) %>%
+#   pivot_longer(cols = -c("NAME_A"), names_to = "tmp1") %>%
+#   mutate(value = sub(".*:\\s*", "", value)) %>%
+#   separate(value, sep = ",", into = paste0("C",c(1:10))) %>%
+#   dplyr::select(where(~ !all(is.na(.)))) %>%
+#   pivot_longer(cols = -c("NAME_A","tmp1"), names_to = "tmp2") %>%
+#   mutate(value = gsub("\\s*\\([0-9]+\\)", "", value))
+  
+Litologia <- read.xlsx("GEOCATMIN/resultados.xlsx", sheet = 6)
+nC <- ncol(Litologia)
+Litologia$Min <- sapply(1:nrow(Litologia),
+                        function(x){
+                          valores <- unlist(Litologia[x,3:nC])
+                          if(sum(!is.na(valores)) == 0){
+                            NA
+                          }else{min(valores, na.rm = TRUE)}
+                          })
+Litologia$Max <- sapply(1:nrow(Litologia),
+                        function(x){
+                          valores <- unlist(Litologia[x,3:nC])
+                          if(sum(!is.na(valores)) == 0){
+                            NA
+                          }else{max(valores, na.rm = TRUE)}
+                          })
+Litologia$Prom <- sapply(1:nrow(Litologia),
+                        function(x){
+                          valores <- unlist(Litologia[x,5:nC])
+                          promedios <- c()
+                          for(i in 1:(length(valores)/2)){
+                            promedios <- c(promedios,mean(valores[c(2*i,2*i+1)], na.rm = TRUE))
+                          }
+                          promedio <- mean(c(unlist(Litologia[x,3:4]), promedios), na.rm = TRUE)
+                          })
+Litologia <- Litologia %>% dplyr::select(Formación.geológica, Min, Max, Prom)
+names(Litologia)[1] <- c("NAME")
+
+# tmp <- Hydrogeolic_units %>% 
+#  left_join(Litologia, by = "NAME") %>%
+#   filter(is.na(Min)) %>% 
+#   distinct(NAME, .keep_all = TRUE)
+
+Hydrogeolic_units_join <- Hydrogeolic_units %>% 
+  left_join(Litologia, by = "NAME") %>%
+  dplyr::select(NAME,Min,Max,Prom,geometry)
+
+st_write(Hydrogeolic_units_join, "1.PRODUCTOS/Hydrogeolic_units_join.shp")
+```
+
+
