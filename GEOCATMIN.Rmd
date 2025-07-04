@@ -124,4 +124,25 @@ Hydrogeolic_units_join <- Hydrogeolic_units %>%
 st_write(Hydrogeolic_units_join, "1.PRODUCTOS/Hydrogeolic_units_join.shp")
 ```
 
+```{r}
+
+
+SOIL_map$SNAM <- paste0(SOIL_map$SNAM,"-",SOIL_map$NAME) 
+SOIL_map_min <- SOIL_map_min <- SOIL_map_prom <- SOIL_map %>% dplyr::select(-one_of('NAME', 'Min', 'Max', 'Prom'))
+hydrogeologic_observations <- which(!is.na(SOIL_map$Min))
+tmp <- SOIL_map[hydrogeologic_observations,]
+SOL_K_columns <- names(SOIL_map)[grepl("SOL_K",names(SOIL_map)]
+
+for(i in hydrogeologic_observations){
+Nlayers <- sum(!is.na(SOIL_map[i,SOL_K_columns])))
+SOL_K_columns_i <- SOL_K_columns[1:Nlayers]
+SOL_K_MAPSWAT <- sum(SOIL_map[i,SOL_K_columns_i])
+m_min <- SOL_K_MAPSWAT/SOIL_map[i,"Min"]
+m_max <- SOL_K_MAPSWAT/SOIL_map[i,"Max"]
+m_prom <- SOL_K_MAPSWAT/SOIL_map[i,"Prom"]
+SOIL_map_min[i,SOL_K_columns_i] <- m_min*SOIL_map[i,SOL_K_columns_i]
+SOIL_map_max[i,SOL_K_columns_i] <- m_max*SOIL_map[i,SOL_K_columns_i]
+SOIL_map_prom[i,SOL_K_columns_i] <- m_prom*SOIL_map[i,SOL_K_columns_i]
+}
+```
 
